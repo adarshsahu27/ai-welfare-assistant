@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Conversation {
+  id               String   @id @default(cuid())
+  studentName      String
+  studentEmail     String
+  status           String   @default("open")
+  priority         String   @default("low")
+  category         String?
+  escalationReason String?
+  safeguarding     Boolean  @default(false)
+  messages         Message[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String
+  content        String   @db.Text
+  triageResult   Json?
+  disposition    String?
+  resourceIds    String[] @default([])
+  createdAt      DateTime @default(now())
+}
+
+model Resource {
+  id          String @id @default(cuid())
+  title       String
+  description String @db.Text
+  url         String
+  category    String
+  approved    Boolean @default(true)
+}

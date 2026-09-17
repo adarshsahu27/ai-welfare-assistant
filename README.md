@@ -65,6 +65,13 @@ Student Message
 → Store in Postgres
 → Return to student + staff dashboard
 
+## Key Decisions
+
+See DECISIONS.md for:
+- What was deliberately not built
+- Trade-offs in design choices
+- First failure points in production
+
 ## Notes
 
 - Probes use live model calls (not mocked)

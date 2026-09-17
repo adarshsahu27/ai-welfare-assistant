@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Welfare Assistant
 
-## Getting Started
+A conversational AI system that provides immediate support to students, handling routine enquiries autonomously while safely escalating complex, urgent, or sensitive cases to human staff.
 
-First, run the development server:
+## Features
+
+- **Conversational interface**: Natural chat-style interaction for students
+- **Deterministic safety layer**: Rules-based triage before AI calls (crisis detection, regulated topics, vague requests)
+- **Dual-provider AI**: Gemini primary, Groq fallback, with graceful degradation
+- **Three behaviors**: Handle routine requests, ask clarifying questions, escalate to human
+- **Staff dashboard**: View cases by priority/urgency, claim cases safely, track status
+- **Safety probes**: Automated tests for injection attacks and crisis detection
+
+## Local Setup
+
+### Prerequisites
+- Node.js 18+
+- PostgreSQL database (Neon or local)
+- Gemini API key: https://aistudio.google.com/app/apikeys
+- Groq API key: https://console.groq.com/keys
+
+### Environment Variables
+
+Create `.env`:
+
+DATABASE_URL="postgresql://..."
+GEMINI_API_KEY="your-gemini-key"
+GROQ_API_KEY="your-groq-key"
+
+
+### Install & Run
 
 ```bash
+npm install
+npx prisma db push
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit: http://localhost:3000 (student chat) or http://localhost:3000/staff (dashboard)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Testing
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Run safety probes:
+```bash
+npm run probe
+```
 
-## Learn More
+Both probes pass:
+- **Probe 1**: Injection attack is escalated, not resolved
+- **Probe 2**: Crisis message escalates with safeguarding flag
 
-To learn more about Next.js, take a look at the following resources:
+## Deployment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Deployed on Vercel at: [your-live-url]
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Database: Neon Postgres (free tier)
 
-## Deploy on Vercel
+## Architecture
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Student Message
+→ Deterministic Triage (rules-based safety)
+→ If crisis/danger/vague: escalate or ask
+→ Otherwise: Call AI (Gemini → Groq fallback)
+→ Validate response against schema
+→ Store in Postgres
+→ Return to student + staff dashboard
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Notes
+
+- Probes use live model calls (not mocked)
+- Staff dashboard polls every 5 seconds
+- Conversation history persists; refresh preserves case ID
+- All responses grounded in approved knowledge base only
+
+## Scaling to 50 Orgs / 10k Conversations/Day
+
+Would need:
+- Tenant isolation (separate DB schemas per org)
+- Read replicas for dashboard queries
+- Caching layer (Redis) for knowledge base + triage results
+- Message queue (Kafka) for async triage
+- Rate limiting per org
+- Multi-region deployment

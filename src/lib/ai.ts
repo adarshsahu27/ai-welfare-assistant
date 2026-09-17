@@ -1,58 +1,11 @@
-import { z } from "zod";
-
-const ResponseSchema = z.object({
-  message: z.string(),
-  resourceIds: z.array(z.string()).default([]),
-  needsHuman: z.boolean(),
-  priority: z.enum(["low", "medium", "high", "critical"]),
-  reason: z.string().nullable(),
-  followUpQuestion: z.string().nullable(),
-});
-
-export type AIResponse = z.infer<typeof ResponseSchema>;
-
-const KNOWLEDGE_BASE = {
-  "hardship-fund": {
-    title: "University Hardship Fund",
-    link: "/resources/hardship-fund",
-  },
-  "student-visa": {
-    title: "Student Visa and CAS",
-    link: "https://www.gov.uk/student-visa",
-  },
-  "deposit-guide": {
-    title: "Tenancy Deposit Guide",
-    link: "/resources/deposit-guide",
-  },
-  library: { title: "Academic Resources", link: "/resources/library" },
-  "extenuating-circumstances": {
-    title: "Extenuating Circumstances",
-    link: "/resources/extenuating-circumstances",
-  },
-  "it-help": { title: "IT and Account Support", link: "/resources/it-help" },
-  "disability-support": {
-    title: "Disability and Additional Learning Support",
-    link: "/resources/disability-support",
-  },
-  fees: { title: "Fees and Payment Plans", link: "/resources/fees" },
-  careers: { title: "Careers and Part-Time Work", link: "/resources/careers" },
-  wellbeing: {
-    title: "Wellbeing and Counselling Service",
-    link: "/resources/wellbeing",
-  },
-  "report-and-support": {
-    title: "Reporting Harassment or Sexual Misconduct",
-    link: "/resources/report-and-support",
-  },
-};
+import { ResponseSchema, AIResponse } from "./validation";
+import { KNOWLEDGE_BASE, getResourcesAsText } from "./resources";
 
 const systemPrompt = `You are a calm, helpful university welfare assistant.
 
 Answer questions using ONLY these approved resources:
 
-${Object.entries(KNOWLEDGE_BASE)
-  .map(([id, r]) => `- ${id}: ${r.title}`)
-  .join("\n")}
+${getResourcesAsText()}
 
 Rules:
 1. Answer ONLY from approved resources.
@@ -67,7 +20,6 @@ Rules:
 10. followUpQuestion can be null when no follow-up is needed.
 
 Return the response using the required JSON schema.`;
-
 // PRIMARY: Gemini
 async function callGemini(
   messages: Array<{ role: string; content: string }>

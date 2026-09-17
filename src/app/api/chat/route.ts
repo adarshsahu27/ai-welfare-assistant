@@ -2,26 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { triageMessage } from "@/lib/triage";
 import { triageWithAI } from "@/lib/ai";
-
-const KNOWLEDGE_BASE = {
-  "hardship-fund": { title: "University Hardship Fund", url: "/resources/hardship-fund" },
-  "student-visa": { title: "Student Visa and CAS", url: "https://www.gov.uk/student-visa" },
-  "deposit-guide": { title: "Tenancy Deposit Guide", url: "/resources/deposit-guide" },
-  "library": { title: "Academic Resources", url: "/resources/library" },
-  "extenuating-circumstances": { title: "Extenuating Circumstances", url: "/resources/extenuating-circumstances" },
-  "it-help": { title: "IT and Account Support", url: "/resources/it-help" },
-  "disability-support": { title: "Disability and Additional Learning Support", url: "/resources/disability-support" },
-  "fees": { title: "Fees and Payment Plans", url: "/resources/fees" },
-  "careers": { title: "Careers and Part-Time Work", url: "/resources/careers" },
-  "wellbeing": { title: "Wellbeing and Counselling Service", url: "/resources/wellbeing" },
-  "report-and-support": { title: "Reporting Harassment or Sexual Misconduct", url: "/resources/report-and-support" },
-};
+import { KNOWLEDGE_BASE } from "@/lib/resources";
 
 export async function POST(request: NextRequest) {
   try {
     const { conversationId, message, history } = await request.json();
 
-    // Save user message
     await prisma.message.create({
       data: {
         conversationId,
@@ -30,10 +16,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Run deterministic triage
     const deterministicTriage = triageMessage(message);
 
-    // If crisis or dangerous, escalate immediately
     if (deterministicTriage.safeguarding || deterministicTriage.status === "escalated") {
       await prisma.conversation.update({
         where: { id: conversationId },
@@ -65,7 +49,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // If spam
     if (deterministicTriage.reason === "Spam/abuse - ignore") {
       return NextResponse.json({
         response: "I'm here to help with genuine student support enquiries.",
@@ -74,7 +57,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // If vague, ask clarifying question
     if (deterministicTriage.disposition === "ask") {
       const clarifyingQuestion = "Could you tell me a bit more about what you need help with?";
 
@@ -94,7 +76,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Call AI
     const aiResponse = await triageWithAI(message, history);
 
     if (aiResponse.needsHuman) {
@@ -127,10 +108,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Map resourceIds to full resource objects
     const resourceLinks = aiResponse.resourceIds
       .map((id: string) => {
-        const kb = KNOWLEDGE_BASE[id as keyof typeof KNOWLEDGE_BASE];
-        return kb ? { id, title: kb.title, url: kb.url } : null;
+        const resource = KNOWLEDGE_BASE[id as keyof typeof KNOWLEDGE_BASE];
+        return resource ? { id, title: resource.title, url: resource.link } : null;
       })
       .filter(Boolean);
 
